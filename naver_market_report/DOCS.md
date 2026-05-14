@@ -15,13 +15,13 @@
 보기용 사본은 기본적으로 아래에도 저장됩니다.
 
 ```text
-/config/www/stock/latest.html
+/config/www/latest.html
 ```
 
 Home Assistant에서는 다음 주소로 열 수 있습니다.
 
 ```text
-/local/stock/latest.html
+/local/latest.html
 ```
 
 ## 설정

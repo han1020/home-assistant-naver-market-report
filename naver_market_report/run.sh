@@ -10,7 +10,7 @@ TZ_VALUE="$(jq -r '.timezone // "Asia/Seoul"' "$CONFIG_PATH")"
 MAX_PAGES="$(jq -r '.max_pages // 3' "$CONFIG_PATH")"
 OUTPUT_SUBDIR="$(jq -r '.output_subdir // "analysis"' "$CONFIG_PATH")"
 PUBLISH_PUBLIC="$(jq -r '.publish_public // true' "$CONFIG_PATH")"
-PUBLIC_SUBDIR="$(jq -r '.public_subdir // "www/stock"' "$CONFIG_PATH")"
+PUBLIC_SUBDIR="$(jq -r '.public_subdir // "www"' "$CONFIG_PATH")"
 RUN_ON_START="$(jq -r '.run_on_start // true' "$CONFIG_PATH")"
 LOCAL_ONLY="$(jq -r '.local_only // false' "$CONFIG_PATH")"
 SKIP_ATTACHMENTS="$(jq -r '.skip_attachments // false' "$CONFIG_PATH")"
@@ -58,7 +58,13 @@ run_report() {
       cp "$latest_html" "$PUBLIC_DIR/$(basename "$latest_html")"
       cp "$latest_html" "$PUBLIC_DIR/latest.html"
       echo "[naver-market-report] Public HTML: $PUBLIC_DIR/latest.html"
-      echo "[naver-market-report] Public URL: /local/${PUBLIC_SUBDIR#www/}/latest.html"
+      public_path="${PUBLIC_SUBDIR#www}"
+      public_path="${public_path#/}"
+      if [[ -n "$public_path" ]]; then
+        echo "[naver-market-report] Public URL: /local/${public_path}/latest.html"
+      else
+        echo "[naver-market-report] Public URL: /local/latest.html"
+      fi
     else
       echo "[naver-market-report] No HTML file found in $MOBILE_DIR to publish"
     fi
