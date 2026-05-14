@@ -12,7 +12,17 @@
 
 파일 에디터나 Samba에서 `/config/analysis` 폴더를 열어 확인할 수 있습니다.
 
-참고로 Home Assistant의 `/local/...` URL은 `/config/www` 아래 파일에만 자동으로 연결됩니다. `/config/analysis`는 파일 보관용 경로입니다.
+보기용 사본은 기본적으로 아래에도 저장됩니다.
+
+```text
+/config/www/stock/latest.html
+```
+
+Home Assistant에서는 다음 주소로 열 수 있습니다.
+
+```text
+/local/stock/latest.html
+```
 
 ## 설정
 
@@ -21,7 +31,9 @@
 - `schedule_time`: 매일 실행할 시각입니다. `HH:MM` 형식으로 입력합니다.
 - `timezone`: 실행 기준 시간대입니다. 기본값은 `Asia/Seoul`입니다.
 - `max_pages`: 네이버 목록에서 확인할 페이지 수입니다.
-- `output_subdir`: HTML 파일을 저장할 `/config` 아래 상대 경로입니다.
+- `output_subdir`: 보관용 HTML 파일을 저장할 `/config` 아래 상대 경로입니다.
+- `publish_public`: Home Assistant에서 바로 열 수 있는 보기용 사본을 만들지 정합니다.
+- `public_subdir`: 보기용 HTML 파일을 저장할 `/config` 아래 상대 경로입니다. `/local/...` URL로 열려면 `www/` 아래여야 합니다.
 - `run_on_start`: 애드온 시작 시 즉시 한 번 실행할지 정합니다.
 - `local_only`: GPT 호출 없이 로컬 요약만 생성합니다.
 - `skip_attachments`: 첨부 PDF 다운로드와 텍스트 추출을 건너뜁니다.

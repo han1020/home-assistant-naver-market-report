@@ -9,6 +9,8 @@ SCHEDULE_TIME="$(jq -r '.schedule_time // "10:00"' "$CONFIG_PATH")"
 TZ_VALUE="$(jq -r '.timezone // "Asia/Seoul"' "$CONFIG_PATH")"
 MAX_PAGES="$(jq -r '.max_pages // 3' "$CONFIG_PATH")"
 OUTPUT_SUBDIR="$(jq -r '.output_subdir // "analysis"' "$CONFIG_PATH")"
+PUBLISH_PUBLIC="$(jq -r '.publish_public // true' "$CONFIG_PATH")"
+PUBLIC_SUBDIR="$(jq -r '.public_subdir // "www/stock"' "$CONFIG_PATH")"
 RUN_ON_START="$(jq -r '.run_on_start // true' "$CONFIG_PATH")"
 LOCAL_ONLY="$(jq -r '.local_only // false' "$CONFIG_PATH")"
 SKIP_ATTACHMENTS="$(jq -r '.skip_attachments // false' "$CONFIG_PATH")"
@@ -18,8 +20,12 @@ export TZ="$TZ_VALUE"
 PYTHON="/opt/venv/bin/python3"
 APP="/app/naver_market_report.py"
 MOBILE_DIR="/config/${OUTPUT_SUBDIR#/}"
+PUBLIC_DIR="/config/${PUBLIC_SUBDIR#/}"
 
 mkdir -p /data/outputs /data/downloads /data/state "$MOBILE_DIR"
+if [[ "$PUBLISH_PUBLIC" == "true" ]]; then
+  mkdir -p "$PUBLIC_DIR"
+fi
 
 run_report() {
   echo "[naver-market-report] Starting report run at $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -45,6 +51,19 @@ run_report() {
   fi
 
   "$PYTHON" "${args[@]}"
+
+  if [[ "$PUBLISH_PUBLIC" == "true" ]]; then
+    latest_html="$(find "$MOBILE_DIR" -maxdepth 1 -type f -name '*-market-analysis.html' | sort | tail -n 1)"
+    if [[ -n "$latest_html" ]]; then
+      cp "$latest_html" "$PUBLIC_DIR/$(basename "$latest_html")"
+      cp "$latest_html" "$PUBLIC_DIR/latest.html"
+      echo "[naver-market-report] Public HTML: $PUBLIC_DIR/latest.html"
+      echo "[naver-market-report] Public URL: /local/${PUBLIC_SUBDIR#www/}/latest.html"
+    else
+      echo "[naver-market-report] No HTML file found in $MOBILE_DIR to publish"
+    fi
+  fi
+
   echo "[naver-market-report] Finished report run at $(date '+%Y-%m-%d %H:%M:%S %Z')"
   echo "[naver-market-report] HTML output directory: $MOBILE_DIR"
 }
