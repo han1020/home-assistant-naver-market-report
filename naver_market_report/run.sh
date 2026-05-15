@@ -58,12 +58,14 @@ run_report() {
       cp "$latest_html" "$PUBLIC_DIR/$(basename "$latest_html")"
       cp "$latest_html" "$PUBLIC_DIR/latest.html"
       echo "[naver-market-report] Public HTML: $PUBLIC_DIR/latest.html"
-      public_path="${PUBLIC_SUBDIR#www}"
-      public_path="${public_path#/}"
-      if [[ -n "$public_path" ]]; then
+      clean_public_subdir="${PUBLIC_SUBDIR#/}"
+      if [[ "$clean_public_subdir" == "www" ]]; then
+        echo "[naver-market-report] Public URL: /local/latest.html"
+      elif [[ "$clean_public_subdir" == www/* ]]; then
+        public_path="${clean_public_subdir#www/}"
         echo "[naver-market-report] Public URL: /local/${public_path}/latest.html"
       else
-        echo "[naver-market-report] Public URL: /local/latest.html"
+        echo "[naver-market-report] Public URL unavailable: public_subdir must be under www to use /local"
       fi
     else
       echo "[naver-market-report] No HTML file found in $MOBILE_DIR to publish"

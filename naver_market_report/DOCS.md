@@ -24,6 +24,9 @@ Home Assistant에서는 다음 주소로 열 수 있습니다.
 /local/latest.html
 ```
 
+기존 설치에서 `public_subdir` 값이 `www/stock`으로 남아 있다면 `/local/stock/latest.html`로 열립니다.
+새 기본 경로를 쓰려면 애드온 설정에서 `public_subdir`를 `www`로 바꿔 저장한 뒤 다시 시작하세요.
+
 ## 설정
 
 - `openai_api_key`: GPT 분석을 사용할 OpenAI API 키입니다. 비워두면 로컬 요약만 생성합니다.
@@ -33,7 +36,7 @@ Home Assistant에서는 다음 주소로 열 수 있습니다.
 - `max_pages`: 네이버 목록에서 확인할 페이지 수입니다.
 - `output_subdir`: 보관용 HTML 파일을 저장할 `/config` 아래 상대 경로입니다.
 - `publish_public`: Home Assistant에서 바로 열 수 있는 보기용 사본을 만들지 정합니다.
-- `public_subdir`: 보기용 HTML 파일을 저장할 `/config` 아래 상대 경로입니다. `/local/...` URL로 열려면 `www/` 아래여야 합니다.
+- `public_subdir`: 보기용 HTML 파일을 저장할 `/config` 아래 상대 경로입니다. `/local/...` URL로 열려면 `www` 또는 `www/` 아래여야 합니다.
 - `run_on_start`: 애드온 시작 시 즉시 한 번 실행할지 정합니다.
 - `local_only`: GPT 호출 없이 로컬 요약만 생성합니다.
 - `skip_attachments`: 첨부 PDF 다운로드와 텍스트 추출을 건너뜁니다.

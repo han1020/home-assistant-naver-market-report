@@ -4,5 +4,6 @@
 
 결과 HTML은 기본적으로 Home Assistant의 `/config/analysis`에 저장됩니다.
 보기용 사본은 `/config/www/latest.html`에 저장되며, Home Assistant에서는 `/local/latest.html`로 열 수 있습니다.
+기존 설치에서 `public_subdir`가 `www/stock`으로 남아 있으면 `/local/stock/latest.html`로 열립니다.
 
 설치 후 애드온 설정에서 `openai_api_key`를 입력하면 GPT 분석을 사용하고, 비워두면 로컬 요약만 생성합니다.
