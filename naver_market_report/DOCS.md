@@ -26,6 +26,8 @@ Home Assistant에서는 다음 주소로 열 수 있습니다.
 
 기존 설치에서 `public_subdir` 값이 `www/stock`으로 남아 있다면 `/local/stock/latest.html`로 열립니다.
 새 기본 경로를 쓰려면 애드온 설정에서 `public_subdir`를 `www`로 바꿔 저장한 뒤 다시 시작하세요.
+브라우저 캐시가 남는 환경을 위해 HTML에는 캐시 방지 메타 태그가 포함됩니다.
+애드온 로그에는 매 실행마다 `?v=YYYYMMDDHHMMSS`가 붙은 캐시 우회 주소도 함께 출력됩니다.
 
 ## 설정
 

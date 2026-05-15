@@ -27,6 +27,16 @@ if [[ "$PUBLISH_PUBLIC" == "true" ]]; then
   mkdir -p "$PUBLIC_DIR"
 fi
 
+publish_html_atomic() {
+  local source_path="$1"
+  local target_path="$2"
+  local temp_path
+
+  temp_path="$(mktemp "${target_path}.XXXXXX")"
+  cp "$source_path" "$temp_path"
+  mv "$temp_path" "$target_path"
+}
+
 run_report() {
   echo "[naver-market-report] Starting report run at $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
@@ -55,15 +65,18 @@ run_report() {
   if [[ "$PUBLISH_PUBLIC" == "true" ]]; then
     latest_html="$(find "$MOBILE_DIR" -maxdepth 1 -type f -name '*-market-analysis.html' | sort | tail -n 1)"
     if [[ -n "$latest_html" ]]; then
-      cp "$latest_html" "$PUBLIC_DIR/$(basename "$latest_html")"
-      cp "$latest_html" "$PUBLIC_DIR/latest.html"
+      cache_buster="$(date '+%Y%m%d%H%M%S')"
+      publish_html_atomic "$latest_html" "$PUBLIC_DIR/$(basename "$latest_html")"
+      publish_html_atomic "$latest_html" "$PUBLIC_DIR/latest.html"
       echo "[naver-market-report] Public HTML: $PUBLIC_DIR/latest.html"
       clean_public_subdir="${PUBLIC_SUBDIR#/}"
       if [[ "$clean_public_subdir" == "www" ]]; then
         echo "[naver-market-report] Public URL: /local/latest.html"
+        echo "[naver-market-report] Cache-busted URL: /local/latest.html?v=${cache_buster}"
       elif [[ "$clean_public_subdir" == www/* ]]; then
         public_path="${clean_public_subdir#www/}"
         echo "[naver-market-report] Public URL: /local/${public_path}/latest.html"
+        echo "[naver-market-report] Cache-busted URL: /local/${public_path}/latest.html?v=${cache_buster}"
       else
         echo "[naver-market-report] Public URL unavailable: public_subdir must be under www to use /local"
       fi
