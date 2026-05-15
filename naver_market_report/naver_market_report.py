@@ -39,6 +39,7 @@ DEFAULT_HEADERS = {
     ),
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
 }
+RETRYABLE_OPENAI_STATUS_CODES = {408, 409, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
 DEFAULT_ICLOUD_DIR = (
     Path.home() / "Library" / "Mobile Documents" / "com~apple~CloudDocs" / "증시실황"
 )
@@ -373,7 +374,7 @@ def analyze_with_openai(
             time.sleep(2**attempt)
             continue
 
-        if response.status_code not in {408, 409, 429, 500, 502, 503, 504}:
+        if response.status_code not in RETRYABLE_OPENAI_STATUS_CODES:
             break
         if attempt >= retries:
             break

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Retry transient OpenAI/Cloudflare 520-524 responses before falling back to local analysis.
+
 ## 1.0.0
 
 - Add no-cache metadata to generated report HTML to reduce stale pages in browsers and Home Assistant WebView.

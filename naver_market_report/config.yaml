@@ -1,5 +1,5 @@
 name: "Naver Market Report"
-version: "1.0.0"
+version: "1.0.1"
 slug: "naver_market_report"
 description: "네이버 증권 시황 리포트를 매일 수집해 Home Assistant에서 볼 수 있는 HTML로 저장합니다."
 url: "https://finance.naver.com/research/market_info_list.naver"
