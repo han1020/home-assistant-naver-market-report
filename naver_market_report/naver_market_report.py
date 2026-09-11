@@ -19,7 +19,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 VENDOR_DIR = Path(__file__).resolve().parent / ".vendor"
 if VENDOR_DIR.exists():
@@ -30,8 +30,10 @@ import requests
 from bs4 import BeautifulSoup
 
 
-BASE_URL = "https://finance.naver.com"
-LIST_URL = f"{BASE_URL}/research/market_info_list.naver"
+BASE_URL = "https://stock.naver.com"
+LIST_URL = f"{BASE_URL}/research/daily"
+RESEARCH_API_URL = f"{BASE_URL}/api/stockSecurity/researches/v2/market"
+LIST_PAGE_SIZE = 15
 DEFAULT_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -77,63 +79,41 @@ class NaverResearchClient:
         self.session = requests.Session()
         self.session.headers.update(DEFAULT_HEADERS)
         self.verify: bool | str = False if insecure else certifi.where()
+        self.has_next_page = False
 
-    def get(self, url: str) -> str:
-        response = self.session.get(url, timeout=self.timeout, verify=self.verify)
+    def get_json(self, url: str, params: dict | None = None) -> dict:
+        response = self.session.get(url, params=params, timeout=self.timeout, verify=self.verify)
         response.raise_for_status()
-        response.encoding = response.apparent_encoding or "euc-kr"
-        return response.text
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise RuntimeError("네이버 리서치 API 응답 형식이 변경되었습니다.")
+        return payload
 
-    def fetch_list_page(self, page: int) -> list[MarketReport]:
-        html = self.get(f"{LIST_URL}?page={page}")
-        soup = BeautifulSoup(html, "html.parser")
-        reports: list[MarketReport] = []
-
-        for row in soup.select("table tr"):
-            cells = row.select("td")
-            if len(cells) < 5:
-                continue
-
-            link = cells[0].select_one("a[href*='market_info_read.naver']")
-            if not link:
-                continue
-
-            title = clean_text(link.get_text(" ", strip=True))
-            href = link.get("href", "")
-            attachment_link = cells[2].select_one("a[href]")
-            attachment_url = ""
-            if attachment_link:
-                attachment_url = urljoin(BASE_URL + "/research/", attachment_link.get("href", ""))
-            broker = clean_text(cells[1].get_text(" ", strip=True))
-            date = clean_text(cells[3].get_text(" ", strip=True))
-            views = clean_text(cells[4].get_text(" ", strip=True))
-
-            reports.append(
-                MarketReport(
-                    title=title,
-                    broker=broker,
-                    date=date,
-                    views=views,
-                    url=urljoin(BASE_URL + "/research/", href),
-                    attachment_url=attachment_url,
-                )
-            )
-
+    def fetch_list_page(self, page: int, target: dt.date | None = None) -> list[MarketReport]:
+        if page < 1:
+            raise ValueError("목록 페이지는 1 이상이어야 합니다.")
+        # The new daily UI uses the market API with zero-based page indexes.
+        params = {"index": page - 1, "size": LIST_PAGE_SIZE}
+        if target is not None:
+            params.update(startDate=target.isoformat(), endDate=target.isoformat())
+        payload = self.get_json(RESEARCH_API_URL, params=params)
+        if not isinstance(payload.get("items"), list) or not isinstance(payload.get("hasNext"), bool):
+            raise RuntimeError("네이버 리서치 목록 응답에 items 또는 hasNext가 없습니다.")
+        reports = [report_from_api(item) for item in payload["items"]]
+        self.has_next_page = payload["hasNext"]
         return reports
 
     def fetch_report_body(self, report: MarketReport) -> MarketReport:
-        html = self.get(report.url)
-        soup = BeautifulSoup(html, "html.parser")
-        header_node = soup.select_one("table.type_1 th")
-        if header_node:
-            header = clean_text(header_node.get_text(" ", strip=True))
-            suffix = f" {report.broker} | {normalize_detail_date(report.date)}"
-            if suffix in header:
-                report.title = header.split(suffix, 1)[0].strip()
-
-        body_node = soup.select_one("td.view_cnt")
-        if body_node:
-            report.body = clean_text(body_node.get_text("\n", strip=True))
+        nid = urlsplit(report.url).path.rsplit("/", 1)[-1]
+        detail = report_from_api(self.get_json(f"{RESEARCH_API_URL}/{nid}"))
+        if detail.url != report.url:
+            raise RuntimeError("네이버 리서치 상세 응답의 리포트 ID가 일치하지 않습니다.")
+        report.title = detail.title
+        report.broker = detail.broker
+        report.date = detail.date
+        report.views = detail.views
+        report.body = detail.body
+        report.attachment_url = detail.attachment_url
         return report
 
     def fetch_reports_for_date(
@@ -145,16 +125,18 @@ class NaverResearchClient:
     ) -> list[MarketReport]:
         target_label = target.strftime("%y.%m.%d")
         reports: list[MarketReport] = []
+        seen_urls: set[str] = set()
 
         for page in range(1, max_pages + 1):
-            page_reports = self.fetch_list_page(page)
+            page_reports = self.fetch_list_page(page, target=target)
             if not page_reports:
                 break
 
-            reports.extend(report for report in page_reports if report.date == target_label)
-
-            page_dates = {report.date for report in page_reports}
-            if reports and target_label not in page_dates:
+            for report in page_reports:
+                if report.date == target_label and report.url not in seen_urls:
+                    reports.append(report)
+                    seen_urls.add(report.url)
+            if not self.has_next_page:
                 break
 
         for report in reports:
@@ -194,10 +176,26 @@ def clean_text(value: str) -> str:
     return value.strip()
 
 
-def normalize_detail_date(short_date: str) -> str:
-    if re.fullmatch(r"\d{2}\.\d{2}\.\d{2}", short_date):
-        return f"20{short_date}"
-    return short_date
+def report_from_api(item: dict) -> MarketReport:
+    if not isinstance(item, dict) or any(
+        not item.get(key) for key in ("nid", "title", "brokerName", "writeDate")
+    ):
+        raise RuntimeError("네이버 리서치 응답에 필수 리포트 정보가 없습니다.")
+    if not str(item["nid"]).isdigit():
+        raise RuntimeError("네이버 리서치 응답의 리포트 ID가 올바르지 않습니다.")
+    # Keep the existing stored date format for downstream outputs and filenames.
+    date = dt.date.fromisoformat(item["writeDate"]).strftime("%y.%m.%d")
+    body = BeautifulSoup(item.get("content") or "", "html.parser").get_text("\n", strip=True)
+    attachment = item.get("attachUrl") or ""
+    return MarketReport(
+        title=clean_text(html.unescape(item["title"])),
+        broker=clean_text(item["brokerName"]),
+        date=date,
+        views=str(item.get("readCount") or "0"),
+        url=f"{LIST_URL}/{item['nid']}",
+        body=clean_text(body),
+        attachment_url=urljoin(BASE_URL, attachment) if attachment else "",
+    )
 
 
 def attachment_filename(report: MarketReport) -> str:
@@ -315,7 +313,7 @@ def build_analysis_prompt(reports: Iterable[MarketReport], target_date: dt.date)
     joined = "\n\n---\n\n".join(report_blocks)
     prompt = textwrap.dedent(
         f"""
-        아래 자료는 네이버 증권 리서치 탭의 시황정보 리포트 중 {target_date:%Y-%m-%d} 작성분이다.
+        아래 자료는 네이버 증권 리서치 탭의 데일리 리포트 중 {target_date:%Y-%m-%d} 작성분이다.
 
         역할:
         - 한국어로 답한다.
@@ -451,7 +449,7 @@ def analyze_locally(reports: list[MarketReport], target_date: dt.date) -> Analys
     text = (
         f"# {target_date:%Y-%m-%d} 네이버 증권 시황 로컬 요약\n\n"
         "## 핵심 요약\n"
-        f"- 오늘 수집된 시황정보 리포트는 총 {len(reports)}건입니다.\n"
+        f"- 오늘 수집된 데일리 리포트는 총 {len(reports)}건입니다.\n"
         f"- 첨부 PDF는 {attachment_count}건 발견했고, 이 중 {extracted_count}건에서 텍스트를 추출했습니다.\n"
         f"- 반복적으로 감지된 키워드는 {', '.join(hits) if hits else '뚜렷하게 감지되지 않았습니다'}입니다.\n"
         "- GPT 분석을 사용하려면 `.env`에 `OPENAI_API_KEY`를 설정한 뒤 다시 실행하세요.\n\n"
@@ -651,7 +649,16 @@ def load_seen_urls(path: Path) -> set[str]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return set()
-    return {str(url) for url in data.get("seen_report_urls", [])}
+    return {canonical_report_url(str(url)) for url in data.get("seen_report_urls", [])}
+
+
+def canonical_report_url(url: str) -> str:
+    parts = urlsplit(url)
+    if parts.hostname == "finance.naver.com" and parts.path == "/research/market_info_read.naver":
+        nid = parse_qs(parts.query).get("nid", [""])[0]
+        if nid.isdigit():
+            return f"{LIST_URL}/{nid}"
+    return url
 
 
 def save_seen_urls(path: Path, urls: Iterable[str]) -> None:
@@ -741,7 +748,7 @@ def display_notification(message: str, title: str) -> bool:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="네이버 증권 리서치 시황정보를 수집하고 GPT로 분석합니다."
+        description="네이버 증권 리서치 데일리 리포트를 수집하고 GPT로 분석합니다."
     )
     parser.add_argument("--date", help="분석 날짜. 예: 2026-05-14. 기본값은 오늘")
     parser.add_argument("--max-pages", type=int, default=3, help="조회할 목록 페이지 수")

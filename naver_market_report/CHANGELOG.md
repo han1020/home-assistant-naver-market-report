@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Migrate daily report collection to stock.naver.com and its JSON list/detail endpoints.
+- Support date filters, zero-based pagination, and PDF attachments from detail responses.
+- Preserve duplicate notification detection for reports saved with legacy URLs.
+
 ## 1.0.1
 
 - Retry transient OpenAI/Cloudflare 520-524 responses before falling back to local analysis.

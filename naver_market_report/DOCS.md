@@ -1,6 +1,6 @@
 # Naver Market Report
 
-네이버 증권 시황정보 리포트를 매일 수집하고, 결과 HTML을 Home Assistant의 정적 파일 폴더에 저장합니다.
+네이버 증권 데일리 리포트를 매일 수집하고, 결과 HTML을 Home Assistant의 정적 파일 폴더에 저장합니다.
 
 ## 결과 보기
 
