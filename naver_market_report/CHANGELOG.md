@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4
+
+- Honor `run_on_start: false` and default startup runs to disabled to avoid unwanted analysis after restarts and updates.
+- Keep daily scheduled runs enabled and log when the startup run is skipped.
+- Honor `publish_public: false` instead of replacing it with the default.
+- Document the setting change required for existing installations.
+
 ## 1.0.2
 
 - Migrate daily report collection to stock.naver.com and its JSON list/detail endpoints.

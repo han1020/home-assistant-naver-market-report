@@ -1,5 +1,5 @@
 name: "Naver Market Report"
-version: "1.0.2"
+version: "1.0.4"
 slug: "naver_market_report"
 description: "네이버 증권 시황 리포트를 매일 수집해 Home Assistant에서 볼 수 있는 HTML로 저장합니다."
 url: "https://stock.naver.com/research/daily"
@@ -25,7 +25,7 @@ options:
   output_subdir: "analysis"
   publish_public: true
   public_subdir: "www"
-  run_on_start: true
+  run_on_start: false
   local_only: false
   skip_attachments: false
 schema:

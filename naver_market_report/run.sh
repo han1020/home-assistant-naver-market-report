@@ -9,9 +9,9 @@ SCHEDULE_TIME="$(jq -r '.schedule_time // "10:00"' "$CONFIG_PATH")"
 TZ_VALUE="$(jq -r '.timezone // "Asia/Seoul"' "$CONFIG_PATH")"
 MAX_PAGES="$(jq -r '.max_pages // 3' "$CONFIG_PATH")"
 OUTPUT_SUBDIR="$(jq -r '.output_subdir // "analysis"' "$CONFIG_PATH")"
-PUBLISH_PUBLIC="$(jq -r '.publish_public // true' "$CONFIG_PATH")"
+PUBLISH_PUBLIC="$(jq -r 'if .publish_public == null then true else .publish_public end' "$CONFIG_PATH")"
 PUBLIC_SUBDIR="$(jq -r '.public_subdir // "www"' "$CONFIG_PATH")"
-RUN_ON_START="$(jq -r '.run_on_start // true' "$CONFIG_PATH")"
+RUN_ON_START="$(jq -r '.run_on_start // false' "$CONFIG_PATH")"
 LOCAL_ONLY="$(jq -r '.local_only // false' "$CONFIG_PATH")"
 SKIP_ATTACHMENTS="$(jq -r '.skip_attachments // false' "$CONFIG_PATH")"
 
@@ -110,6 +110,8 @@ PY
 
 if [[ "$RUN_ON_START" == "true" ]]; then
   run_report || echo "[naver-market-report] Initial run failed"
+else
+  echo "[naver-market-report] Startup run disabled; waiting for scheduled run"
 fi
 
 while true; do
